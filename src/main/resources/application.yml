@@ -13,11 +13,62 @@ eureka:
   instance:
     # 是否注册IP到eureka server，如不指定或设为false，那就会注册主机名到eureka server
     prefer-ip-address: true
-
       # 属性配置的优先级高于代码配置。 全局配置 去掉client name 即 user-server
       #<clientName>
 
     #默认情况下Ribbon是懒加载的——首次请求Ribbon相关类才会初始化，这会导致首次请求过慢的问题，你可以配置饥饿加载，让Ribbon在应用启动时就初始化。
+    instance-id: consumer-feign
+
+# yml 日志级别配置 （代码和配置文件同时存在的话 配置文件的优先级更高）
+feign:
+  client:
+    config:
+      user-server:
+        loggerLevel: full
+        connectTimeout: 5000
+        readTimeout: 5000
+        # feign.client.default-to-properties=false
+  # 压缩
+  compression:
+    request:
+      enabled: true
+      min-request-size: 2048
+      mime-types:
+        - text/xml
+        - application/xml
+        - application/json
+    response:
+      enabled: true
 
 
+logging:
+  level:
+    com.example.microserviceconsumermoviefeign.user.service.UserFeignClient : debug
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: 'hystrix.stream'
+
+#Spring Cloud中，Feign和Ribbon在整合了Hystrix后，可能会出现首次调用失败的问题，要如何解决该问题呢？
+#造成该问题的原因
+  #Hystrix默认的超时时间是1秒，如果超过这个时间尚未响应，将会进入fallback代码。而首次请求往往会比较慢（由于Ribbon是懒加载的，在首次请求时，才会开始初始化相关类），这个响应时间可能就大于1秒了。
+    #方法一、将Hystrix超时设长
+        #hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds: 5000
+    #方法二、禁用Hystrix超时
+        #hystrix.command.default.execution.timeout.enabled: false
+    #方法三、为Feign禁用Hystrix
+        #全局禁用
+        #feign.hystrix.enabled: false
+        # 局部禁用 见zhouli github Feign和Ribbon在整合了Hystrix后，可能会出现首次调用失败的问题，要如何解决该问题呢？
+    #方法四、Ribbon配置饥饿加载（最佳）
+          #从Dalston开始，Ribbon支持配置eager load实现在启动时就初始化Ribbon相关类。
+          #
+          #ribbon:
+          #  eager-load:
+          #    enabled: true
+          #    clients: client1, client2, client3  服务名
+ribbon:
+  eager-load:
+    clients:
